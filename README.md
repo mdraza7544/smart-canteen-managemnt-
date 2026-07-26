@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <div align="center">
 
 # SMEIC
@@ -595,3 +596,7 @@ Developed with dedication and teamwork by:
 If you found this project helpful, please give it a ⭐ on GitHub!
 
 </div>
+=======
+# SMEIC
+A full-featured, role-based web application for managing school canteen operations — from menu browsing and food ordering by students, to wallet management by parents, to order processing by canteen staff, to full administrative oversight.
+>>>>>>> 577ea610182b680d8ce44434a705cada8fdb6d2c
