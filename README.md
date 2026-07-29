@@ -578,9 +578,9 @@ Developed with dedication and teamwork by:
 
 | | Name | Role |
 |---|---|---|
-| <img src="https://img.shields.io/badge/Lead-Developer-blueviolet?style=for-the-badge" /> | **Mr. Krischal Pathak** | Frontend Developer |
-| <img src="https://img.shields.io/badge/Backend-Developer-blue?style=for-the-badge" /> | **Mr. Rupesh Adhikari** | Backend Developer |
-| <img src="https://img.shields.io/badge/Frontend-Developer-green?style=for-the-badge" /> | **Mr. Aryan Thapa** | Database Developer |
+| <img src="https://img.shields.io/badge/Lead-Developer-blueviolet?style=for-the-badge" /> | **Mr. Rupesh Adhikari** | Backend+API Developer |
+| <img src="https://img.shields.io/badge/Interface-blue?style=for-the-badge" /> | **Mr. Rupesh Adhikari** | Frontend Developer |
+| <img src="https://img.shields.io/badge/Developer-green?style=for-the-badge" /> | **Mr. Aryan Thapa** | Database Developer |
 | <img src="https://img.shields.io/badge/Developer-coral?style=for-the-badge" /> | **Mrs. Jenisha Chaudhary** | Developer |
 
 <br>
