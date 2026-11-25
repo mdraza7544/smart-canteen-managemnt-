@@ -1,378 +1,272 @@
 -- ============================================================================
--- SMEIC School Canteen Management System - Database Schema + Seed
--- Run this file in MySQL (phpMyAdmin import is fine) before launching the app.
+-- Smart College Canteen Management System — fresh install schema and demo data
+-- Optional legacy data import: run migrations/001_college_migration.php after this schema.
+--   mysql -u root < database.sql
+-- Demo: admin@canteen.com / Admin@123; aarav@campus.edu / Student@123
 -- ============================================================================
 
-DROP DATABASE IF EXISTS smeic_canteen;
-CREATE DATABASE smeic_canteen CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE smeic_canteen;
+CREATE DATABASE IF NOT EXISTS smeic_college_canteen CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE smeic_college_canteen;
 
--- ----------------------------------------------------------------------------
--- USERS (common auth table for admin, parent, canteen). Students authenticate
--- via students table by student_id.
--- ----------------------------------------------------------------------------
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    role ENUM('admin','parent','canteen') NOT NULL,
-    ref_id INT NOT NULL COMMENT 'FK to parents.id or canteen_staff.id',
+    role ENUM('admin','student') NOT NULL DEFAULT 'student',
+    full_name VARCHAR(150) NOT NULL,
     email VARCHAR(190) NOT NULL UNIQUE,
+    phone VARCHAR(20) DEFAULT NULL,
+    student_id VARCHAR(30) DEFAULT NULL UNIQUE,
+    department VARCHAR(100) DEFAULT NULL,
     password VARCHAR(255) NOT NULL,
-    force_password_change TINYINT(1) NOT NULL DEFAULT 1,
+    force_password_change TINYINT(1) NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
-CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_users_ref ON users(ref_id);
-
--- ----------------------------------------------------------------------------
--- CANTEEN STAFF
--- ----------------------------------------------------------------------------
-CREATE TABLE canteen_staff (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    full_name VARCHAR(150) NOT NULL,
-    email VARCHAR(190) NOT NULL UNIQUE,
-    phone VARCHAR(20) DEFAULT NULL,
-    password VARCHAR(255) NOT NULL,
-    force_password_change TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
--- ----------------------------------------------------------------------------
--- PARENTS
--- ----------------------------------------------------------------------------
-CREATE TABLE parents (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    parent_id VARCHAR(20) NOT NULL UNIQUE,
-    full_name VARCHAR(150) NOT NULL,
-    email VARCHAR(190) NOT NULL UNIQUE,
-    phone VARCHAR(20) DEFAULT NULL,
-    address TEXT,
-    wallet_balance DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-    password VARCHAR(255) NOT NULL,
-    force_password_change TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
--- ----------------------------------------------------------------------------
--- STUDENTS
--- ----------------------------------------------------------------------------
-CREATE TABLE students (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id VARCHAR(20) NOT NULL UNIQUE,
-    full_name VARCHAR(150) NOT NULL,
-    class_name VARCHAR(50) DEFAULT NULL,
-    roll_no VARCHAR(20) DEFAULT NULL,
-    address TEXT,
-    behavioral_score INT NOT NULL DEFAULT 100,
-    parent_id INT DEFAULT NULL,
-    password VARCHAR(255) NOT NULL,
-    force_password_change TINYINT(1) NOT NULL DEFAULT 1,
-    is_deleted TINYINT(1) NOT NULL DEFAULT 0,
+    last_login DATETIME DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_student_parent FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-CREATE INDEX idx_student_class ON students(class_name);
-CREATE INDEX idx_student_roll ON students(roll_no);
-
--- ----------------------------------------------------------------------------
--- STUDENT <-> PARENT LINKS (for future multi-child)
--- ----------------------------------------------------------------------------
-CREATE TABLE student_parent_links (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
-    parent_id INT NOT NULL,
-    relationship VARCHAR(50) DEFAULT 'parent',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uniq_link (student_id, parent_id),
-    CONSTRAINT fk_link_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-    CONSTRAINT fk_link_parent FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- ----------------------------------------------------------------------------
--- WALLETS (student-side balance)
--- ----------------------------------------------------------------------------
-CREATE TABLE wallets (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL UNIQUE,
-    balance DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_wallet_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+    KEY idx_users_role (role),
+    KEY idx_users_active (is_active)
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
--- MENU ITEMS
--- ----------------------------------------------------------------------------
-CREATE TABLE menu_items (
+CREATE TABLE IF NOT EXISTS wallets (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    balance DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_wallet_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    type ENUM('credit','debit') NOT NULL,
+    purpose ENUM('recharge','order_payment','refund','admin_adjustment') NOT NULL,
+    reference VARCHAR(255) DEFAULT NULL,
+    txn_ref VARCHAR(40) NOT NULL UNIQUE,
+    balance_after DECIMAL(10,2) NOT NULL,
+    status ENUM('success','failed') NOT NULL DEFAULT 'success',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_wt_user_created (user_id, created_at),
+    CONSTRAINT fk_wt_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS payment_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_method ENUM('upi','card','netbanking') NOT NULL,
+    gateway_txn_id VARCHAR(40) NOT NULL UNIQUE,
+    status ENUM('pending','success','failed') NOT NULL DEFAULT 'pending',
+    failure_reason VARCHAR(255) DEFAULT NULL,
+    paid_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_pt_user_created (user_id, created_at),
+    KEY idx_pt_status (status),
+    CONSTRAINT fk_pt_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS food_categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(80) NOT NULL UNIQUE,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS menu_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category_id INT NOT NULL,
     name VARCHAR(150) NOT NULL,
     description TEXT,
     price DECIMAL(10,2) NOT NULL,
-    category ENUM('veg','nonveg','snacks','drinks','desserts') NOT NULL DEFAULT 'veg',
-    image VARCHAR(255) DEFAULT NULL,
+    food_type ENUM('vegetarian','non_vegetarian') NOT NULL DEFAULT 'vegetarian',
+    image VARCHAR(500) DEFAULT NULL,
+    preparation_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 10,
+    popularity INT UNSIGNED NOT NULL DEFAULT 0,
     is_available TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
-CREATE INDEX idx_menu_cat ON menu_items(category);
-CREATE INDEX idx_menu_avail ON menu_items(is_available);
-
--- ----------------------------------------------------------------------------
--- DAILY SPECIALS
--- ----------------------------------------------------------------------------
-CREATE TABLE daily_specials (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    menu_item_id INT NOT NULL,
-    special_date DATE NOT NULL,
-    expires_at DATETIME NOT NULL,
-    is_active TINYINT(1) NOT NULL DEFAULT 1,
-    created_by INT DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_special_item FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_menu_category (category_id),
+    KEY idx_menu_available (is_available),
+    KEY idx_menu_price (price),
+    CONSTRAINT fk_menu_category FOREIGN KEY (category_id) REFERENCES food_categories(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
-CREATE INDEX idx_special_active ON daily_specials(is_active, expires_at);
-
--- ----------------------------------------------------------------------------
--- CARTS
--- ----------------------------------------------------------------------------
-CREATE TABLE carts (
+CREATE TABLE IF NOT EXISTS inventory (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
+    menu_item_id INT NOT NULL UNIQUE,
+    quantity INT UNSIGNED NOT NULL DEFAULT 0,
+    minimum_quantity INT UNSIGNED NOT NULL DEFAULT 5,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_inventory_item FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS stock_movements (
+    id INT AUTO_INCREMENT PRIMARY KEY,
     menu_item_id INT NOT NULL,
-    quantity INT NOT NULL DEFAULT 1,
+    previous_quantity INT UNSIGNED NOT NULL,
+    added_quantity INT UNSIGNED NOT NULL DEFAULT 0,
+    deducted_quantity INT UNSIGNED NOT NULL DEFAULT 0,
+    updated_quantity INT UNSIGNED NOT NULL,
+    reason VARCHAR(180) NOT NULL,
+    admin_id INT DEFAULT NULL,
+    order_id INT DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_stock_item_created (menu_item_id, created_at),
+    CONSTRAINT fk_stock_item FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE,
+    CONSTRAINT fk_stock_admin FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS cart_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    menu_item_id INT NOT NULL,
+    quantity INT UNSIGNED NOT NULL DEFAULT 1,
     added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uniq_cart (student_id, menu_item_id),
-    CONSTRAINT fk_cart_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_cart_user_item (user_id, menu_item_id),
+    CONSTRAINT fk_cart_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_cart_item FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
--- ORDERS
--- ----------------------------------------------------------------------------
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
-    order_number VARCHAR(30) NOT NULL UNIQUE,
+    user_id INT NOT NULL,
+    order_number VARCHAR(32) NOT NULL UNIQUE,
+    pickup_token CHAR(6) NOT NULL UNIQUE,
+    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     total_amount DECIMAL(10,2) NOT NULL,
-    status ENUM('pending','accepted','preparing','ready','picked_up','cancelled') NOT NULL DEFAULT 'pending',
-    prepared_time_minutes INT DEFAULT NULL,
-    ready_at DATETIME DEFAULT NULL,
-    picked_up_at DATETIME DEFAULT NULL,
-    cancelled_at DATETIME DEFAULT NULL,
-    pickup_token VARCHAR(40) DEFAULT NULL,
-    pickup_reminder_count INT NOT NULL DEFAULT 0,
+    status ENUM('pending','accepted','preparing','ready','completed','cancelled') NOT NULL DEFAULT 'pending',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_order_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+    KEY idx_orders_user_created (user_id, created_at),
+    KEY idx_orders_status_created (status, created_at),
+    CONSTRAINT fk_order_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
-CREATE INDEX idx_order_status ON orders(status);
-CREATE INDEX idx_order_student ON orders(student_id);
-CREATE INDEX idx_order_ready ON orders(ready_at);
-
--- ----------------------------------------------------------------------------
--- ORDER ITEMS
--- ----------------------------------------------------------------------------
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT NOT NULL,
     menu_item_id INT NOT NULL,
-    quantity INT NOT NULL,
-    price DECIMAL(10,2) NOT NULL,
-    CONSTRAINT fk_oi_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-    CONSTRAINT fk_oi_item FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE RESTRICT
+    item_name VARCHAR(150) NOT NULL,
+    quantity INT UNSIGNED NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    CONSTRAINT fk_order_item_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_order_item_menu FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
--- TRANSACTIONS (parent and student wallets)
--- ----------------------------------------------------------------------------
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS canteen_tables (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    user_type ENUM('parent','student','admin') NOT NULL,
-    amount DECIMAL(10,2) NOT NULL,
-    type ENUM('credit','debit') NOT NULL,
-    reference VARCHAR(255) DEFAULT NULL,
-    balance_after DECIMAL(10,2) DEFAULT NULL,
+    table_number VARCHAR(30) NOT NULL UNIQUE,
+    capacity SMALLINT UNSIGNED NOT NULL,
+    is_enabled TINYINT(1) NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
-CREATE INDEX idx_tx_user ON transactions(user_id, user_type);
-CREATE INDEX idx_tx_created ON transactions(created_at);
-
--- ----------------------------------------------------------------------------
--- NOTIFICATIONS
--- ----------------------------------------------------------------------------
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS reservation_slots (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    user_type ENUM('student','parent','canteen','admin') NOT NULL,
-    title VARCHAR(200) NOT NULL,
-    message TEXT,
-    is_read TINYINT(1) NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    label VARCHAR(80) NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    UNIQUE KEY uniq_slot_time (start_time, end_time)
 ) ENGINE=InnoDB;
 
-CREATE INDEX idx_notif_user ON notifications(user_id, user_type);
-CREATE INDEX idx_notif_read ON notifications(is_read);
-
--- ----------------------------------------------------------------------------
--- FEEDBACK
--- ----------------------------------------------------------------------------
-CREATE TABLE feedback (
+CREATE TABLE IF NOT EXISTS table_reservations (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
-    order_id INT DEFAULT NULL,
-    rating TINYINT NOT NULL,
-    comment TEXT,
+    user_id INT NOT NULL,
+    table_id INT NOT NULL,
+    slot_id INT NOT NULL,
+    reservation_date DATE NOT NULL,
+    party_size SMALLINT UNSIGNED NOT NULL,
+    status ENUM('pending','confirmed','completed','cancelled','rejected') NOT NULL DEFAULT 'confirmed',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_fb_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-    CONSTRAINT fk_fb_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    active_booking TINYINT GENERATED ALWAYS AS (CASE WHEN status IN ('pending','confirmed') THEN 1 ELSE NULL END) STORED,
+    UNIQUE KEY uniq_active_table_slot (table_id, reservation_date, slot_id, active_booking),
+    KEY idx_reservations_date_slot (reservation_date, slot_id, status),
+    KEY idx_reservations_user (user_id, reservation_date),
+    CONSTRAINT fk_reservation_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_reservation_table FOREIGN KEY (table_id) REFERENCES canteen_tables(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_reservation_slot FOREIGN KEY (slot_id) REFERENCES reservation_slots(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
--- PASSWORD RESETS
--- ----------------------------------------------------------------------------
-CREATE TABLE password_resets (
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    recipient_type ENUM('student','admin') NOT NULL,
+    user_id INT NOT NULL,
+    title VARCHAR(180) NOT NULL,
+    message TEXT NOT NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_notification_recipient (recipient_type, user_id, is_read, created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS offers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(150) NOT NULL,
+    description VARCHAR(500) DEFAULT NULL,
+    discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    starts_at DATETIME NOT NULL,
+    ends_at DATETIME NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_offer_live (is_active, starts_at, ends_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS admin_settings (
+    setting_key VARCHAR(100) PRIMARY KEY,
+    setting_value TEXT NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS password_resets (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(190) NOT NULL,
-    token VARCHAR(100) NOT NULL,
+    token VARCHAR(100) NOT NULL UNIQUE,
     expires_at DATETIME NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
-CREATE INDEX idx_pw_email ON password_resets(email);
-CREATE INDEX idx_pw_token ON password_resets(token);
-
--- ----------------------------------------------------------------------------
--- AUDIT LOGS
--- ----------------------------------------------------------------------------
-CREATE TABLE audit_logs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    admin_id INT NOT NULL,
-    action VARCHAR(100) NOT NULL,
-    details TEXT,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
--- ----------------------------------------------------------------------------
--- PARENT PREFERENCES (parent suggests items to children)
--- ----------------------------------------------------------------------------
-CREATE TABLE parent_preferences (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    parent_id INT NOT NULL,
-    menu_item_id INT NOT NULL,
-    preference_date DATE NOT NULL,
-    note TEXT,
-    is_seen TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_pref_parent FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE CASCADE,
-    CONSTRAINT fk_pref_item FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE
+    KEY idx_password_reset_email (email)
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
--- BEHAVIORAL SCORES (audit trail of score changes)
--- ----------------------------------------------------------------------------
-CREATE TABLE behavioral_scores (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
-    score INT NOT NULL,
-    reason VARCHAR(255) DEFAULT NULL,
-    updated_by INT DEFAULT NULL,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_bs_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+    admin_id INT DEFAULT NULL,
+    action VARCHAR(120) NOT NULL,
+    details TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_audit_created (created_at),
+    CONSTRAINT fk_audit_admin FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- SEED DATA
--- ============================================================================
+INSERT IGNORE INTO users (id, role, full_name, email, password, is_active)
+VALUES (1, 'admin', 'Canteen Administrator', 'admin@canteen.com', '$2y$10$M.o3XRft7zxpVs2ReXxW0.3fdgjYtBn2kTS4MOAIBKLBv8iHpjS1.', 1);
+INSERT IGNORE INTO users (id, role, full_name, email, phone, student_id, department, password, is_active)
+VALUES (2, 'student', 'Aarav Kumar', 'aarav@campus.edu', '9000000001', 'S10001', 'Computer Science', '$2y$10$A/dxNBLG9/QikjGKZ59ZZ.TerSSz9zusOoTk5pXjgvk9OxtfMmGAy', 1);
+INSERT IGNORE INTO wallets (user_id, balance) VALUES (2, 0.00);
 
--- Canteen staff
-INSERT INTO canteen_staff (id, full_name, email, phone, password, force_password_change)
-VALUES (1, 'Canteen Manager', 'canteen@canteen.com', '9000000000',
-        '$2y$10$5nZ1RkjA3L/Id5jKqLq1FOOQ0d2YKlO.OLjTk3CmrL/1qSrWkzS4i', 1);
+INSERT IGNORE INTO food_categories (id, name, sort_order) VALUES
+(1,'Breakfast',1),(2,'Lunch',2),(3,'Snacks',3),(4,'Fast Food',4),(5,'Beverages',5),(6,'Desserts',6),(7,'Healthy Food',7);
 
--- Admin user (uses users table only; ref_id points to a placeholder admin row)
--- We treat admin as self-contained in users table.
-INSERT INTO users (id, role, ref_id, email, password, force_password_change, is_active)
-VALUES (1, 'admin', 1, 'admin@canteen.com',
-        '$2y$10$5nZ1RkjA3L/Id5jKqLq1FOOQ0d2YKlO.OLjTk3CmrL/1qSrWkzS4i', 1, 1);
+INSERT IGNORE INTO menu_items (id, category_id, name, description, price, food_type, image, preparation_minutes, popularity, is_available) VALUES
+(1,1,'Masala Dosa','Crisp dosa with spiced potato, chutney and sambar.',30,'vegetarian','https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=800&q=80',12,92,1),
+(2,1,'Idli (2 pcs)','Soft steamed idlis served with sambar.',20,'vegetarian','https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=800&q=80',8,80,1),
+(3,2,'Veg Pulao','Basmati rice cooked with seasonal vegetables.',65,'vegetarian','https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=800&q=80',15,65,1),
+(4,2,'Chicken Biryani','Fragrant rice with spiced chicken and raita.',110,'non_vegetarian','https://images.unsplash.com/photo-1563379091339-03246963d96c?auto=format&fit=crop&w=800&q=80',20,88,1),
+(5,3,'Samosa (2 pcs)','Golden potato samosas with mint chutney.',25,'vegetarian','https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80',6,72,1),
+(6,4,'Veg Sandwich','Toasted vegetable and cheese sandwich.',35,'vegetarian','https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80',10,74,1),
+(7,5,'Masala Chai','Freshly brewed tea with ginger and spices.',10,'vegetarian','https://images.unsplash.com/photo-1571934811356-5cc061b6821f?auto=format&fit=crop&w=800&q=80',5,90,1),
+(8,5,'Fresh Lime Juice','Fresh lime, chilled water and a hint of mint.',25,'vegetarian','https://images.unsplash.com/photo-1513558161293-cdaf765edfd4?auto=format&fit=crop&w=800&q=80',5,61,1),
+(9,6,'Chocolate Brownie','Rich chocolate brownie baked in-house.',40,'vegetarian','https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=800&q=80',5,55,1),
+(10,7,'Fruit Bowl','Seasonal fruit with a squeeze of lime.',45,'vegetarian','https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?auto=format&fit=crop&w=800&q=80',5,48,1);
 
--- Parents
-INSERT INTO parents (id, parent_id, full_name, email, phone, address, wallet_balance, password, force_password_change)
-VALUES
-(1, 'P10001', 'Ramesh Kumar', 'parent1@school.com', '9111111111', '12 Park Street', 500.00,
-    '$2y$10$5nZ1RkjA3L/Id5jKqLq1FOOQ0d2YKlO.OLjTk3CmrL/1qSrWkzS4i', 1),
-(2, 'P10002', 'Sunita Sharma', 'parent2@school.com', '9222222222', '45 Lake View', 750.00,
-    '$2y$10$5nZ1RkjA3L/Id5jKqLq1FOOQ0d2YKlO.OLjTk3CmrL/1qSrWkzS4i', 1);
+INSERT IGNORE INTO inventory (menu_item_id, quantity, minimum_quantity) VALUES
+(1,24,5),(2,30,6),(3,18,5),(4,12,4),(5,40,8),(6,20,5),(7,60,10),(8,22,5),(9,14,4),(10,16,5);
 
--- Mirror parents into users table for unified auth
-INSERT INTO users (id, role, ref_id, email, password, force_password_change, is_active) VALUES
-(10, 'parent', 1, 'parent1@school.com', '$2y$10$5nZ1RkjA3L/Id5jKqLq1FOOQ0d2YKlO.OLjTk3CmrL/1qSrWkzS4i', 1, 1),
-(11, 'parent', 2, 'parent2@school.com', '$2y$10$5nZ1RkjA3L/Id5jKqLq1FOOQ0d2YKlO.OLjTk3CmrL/1qSrWkzS4i', 1, 1);
-
--- Mirror canteen staff into users for unified auth
-INSERT INTO users (id, role, ref_id, email, password, force_password_change, is_active) VALUES
-(20, 'canteen', 1, 'canteen@canteen.com', '$2y$10$5nZ1RkjA3L/Id5jKqLq1FOOQ0d2YKlO.OLjTk3CmrL/1qSrWkzS4i', 1, 1);
-
--- Students
-INSERT INTO students (id, student_id, full_name, class_name, roll_no, address, behavioral_score, parent_id, password, force_password_change)
-VALUES
-(1, 'S10001', 'Aarav Kumar', '10-A', '12', '12 Park Street', 95, 1,
-    '$2y$10$5nZ1RkjA3L/Id5jKqLq1FOOQ0d2YKlO.OLjTk3CmrL/1qSrWkzS4i', 1),
-(2, 'S10002', 'Diya Sharma', '9-B', '5', '45 Lake View', 98, 2,
-    '$2y$10$5nZ1RkjA3L/Id5jKqLq1FOOQ0d2YKlO.OLjTk3CmrL/1qSrWkzS4i', 1);
-
--- Student parent links
-INSERT INTO student_parent_links (student_id, parent_id, relationship) VALUES
-(1, 1, 'father'),
-(2, 2, 'mother');
-
--- Wallets
-INSERT INTO wallets (student_id, balance) VALUES
-(1, 250.00),
-(2, 180.00);
-
--- Menu items
-INSERT INTO menu_items (id, name, description, price, category, is_available) VALUES
-(1, 'Veg Pulao', 'Aromatic basmati rice with seasonal vegetables', 80.00, 'veg', 1),
-(2, 'Chicken Biryani', 'Spicy chicken biryani with raita', 140.00, 'nonveg', 1),
-(3, 'Paneer Butter Masala', 'Creamy paneer curry with 2 rotis', 110.00, 'veg', 1),
-(4, 'Masala Dosa', 'Crispy dosa with potato filling and chutney', 70.00, 'veg', 1),
-(5, 'Veg Burger', 'Loaded veg patty burger with fries', 90.00, 'snacks', 1),
-(6, 'Cold Coffee', 'Chilled coffee with ice cream', 60.00, 'drinks', 1),
-(7, 'Fresh Lime Soda', 'Refreshing lime soda - sweet or salt', 30.00, 'drinks', 1),
-(8, 'Samosa (2 pcs)', 'Crispy samosas with mint chutney', 25.00, 'snacks', 1),
-(9, 'Chocolate Brownie', 'Warm fudgy brownie', 50.00, 'desserts', 1),
-(10, 'Egg Fried Rice', 'Fried rice with scrambled egg', 100.00, 'nonveg', 1);
-
--- Active daily special
-INSERT INTO daily_specials (menu_item_id, special_date, expires_at, is_active, created_by) VALUES
-(4, CURDATE(), DATE_ADD(NOW(), INTERVAL 1 DAY), 1, 1);
-
--- Sample transactions (history)
-INSERT INTO transactions (user_id, user_type, amount, type, reference, balance_after) VALUES
-(1, 'parent', 500.00, 'credit', 'Wallet top-up by admin', 500.00),
-(1, 'parent', 250.00, 'debit', 'Transfer to S10001', 250.00),
-(1, 'student', 250.00, 'credit', 'Transfer from P10001', 250.00),
-(2, 'parent', 750.00, 'credit', 'Wallet top-up by admin', 750.00),
-(2, 'parent', 180.00, 'debit', 'Transfer to S10002', 570.00),
-(2, 'student', 180.00, 'credit', 'Transfer from P10002', 180.00);
-
--- Behavioral score history
-INSERT INTO behavioral_scores (student_id, score, reason, updated_by) VALUES
-(1, 95, 'Initial score', 1),
-(2, 98, 'Initial score', 1);
-
--- Sample parent preference
-INSERT INTO parent_preferences (parent_id, menu_item_id, preference_date, note) VALUES
-(1, 5, CURDATE(), 'Try the burger today — it is freshly prepared!');
-
--- The seeded password hash above is for 'Admin@123' (also reused for
--- Student@123, Parent@123, Canteen@123). The application will detect the
--- force_password_change=1 flag on first login and require a new password.
--- The hash is the bcrypt of 'Admin@123' generated by password_hash().
-
--- Done.
+INSERT IGNORE INTO canteen_tables (id, table_number, capacity, is_enabled) VALUES
+(1,'T-01',2,1),(2,'T-02',2,1),(3,'T-03',4,1),(4,'T-04',4,1),(5,'T-05',6,1),(6,'T-06',6,1);
+INSERT IGNORE INTO reservation_slots (id,label,start_time,end_time,is_active) VALUES
+(1,'Morning Break','09:00:00','10:00:00',1),(2,'Lunch 1','12:00:00','13:00:00',1),(3,'Lunch 2','13:00:00','14:00:00',1),(4,'Afternoon Break','15:00:00','16:00:00',1);
+INSERT IGNORE INTO admin_settings (setting_key, setting_value) VALUES
+('canteen_name','Campus Canteen'),('reservation_policy','Reservations can be cancelled any time before the reserved slot.'),('wallet_gateway','Simulated demo gateway only. No real payment is processed.');

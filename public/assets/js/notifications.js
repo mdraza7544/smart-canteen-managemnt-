@@ -1,35 +1,19 @@
-// Notifications polling + pickup reminder polling.
+// Poll only the authenticated account's unread canteen notifications.
 (function () {
     'use strict';
-    const userId = document.body.dataset.userId;
-    const userType = document.body.dataset.userType;
-    if (!userId || !userType) return;
-
-    // 10s notification poll
-    setInterval(async () => {
+    var userId=document.body.dataset.userId;
+    if(!userId) return;
+    async function refresh(){
         try {
-            const r = await smeicAjax('api/check-notifications.php');
-            if (r.data && r.data.unread > 0 && r.data.latest) {
-                if (!window.__lastNotifId || r.data.latest.id > window.__lastNotifId) {
-                    window.__lastNotifId = r.data.latest.id;
-                    toast(r.data.latest.title + ' — ' + r.data.latest.message, 'info', 5000);
-                }
-                const badge = document.querySelector('[data-notif-badge]');
-                if (badge) {
-                    badge.textContent = r.data.unread;
-                    badge.classList.remove('hidden');
-                }
-            } else if (r.data && r.data.unread === 0) {
-                const badge = document.querySelector('[data-notif-badge]');
-                if (badge) badge.classList.add('hidden');
+            var result=await smeicAjax('api/check-notifications.php');
+            var data=result.data&&result.data.data;
+            if(!data) return;
+            var badge=document.querySelector('[data-notif-badge]');
+            if(badge){badge.textContent=data.unread;badge.classList.toggle('hidden',data.unread<1);}
+            if(data.latest&&data.unread>0&&(!window.__lastNotifId||Number(data.latest.id)>window.__lastNotifId)){
+                window.__lastNotifId=Number(data.latest.id); toast(data.latest.title+' — '+data.latest.message,'info',5000);
             }
-        } catch (e) { /* silent */ }
-    }, 10000);
-
-    // 60s pickup reminder poll — student & canteen
-    if (userType === 'student' || userType === 'canteen') {
-        setInterval(async () => {
-            try { await smeicAjax('api/check-pickup-reminders.php'); } catch (e) {}
-        }, 60000);
+        } catch(e) { /* Keep the page usable if polling is unavailable. */ }
     }
+    refresh(); window.setInterval(refresh,10000);
 })();

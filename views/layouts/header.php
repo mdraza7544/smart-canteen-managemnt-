@@ -5,7 +5,7 @@ send_security_headers();
 $notifHref = '';
 if ($user) {
     if ($user['role'] === 'student') $notifHref = url('index.php?action=student/notifications');
-    elseif ($user['role'] === 'parent') $notifHref = url('index.php?action=parent/notifications');
+    elseif ($user['role'] === 'admin') $notifHref = url('index.php?action=admin/notifications');
 }
 ?><!DOCTYPE html>
 <html lang="en">
@@ -19,7 +19,7 @@ if ($user) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="<?= e(url('assets/css/style.css')) ?>">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    <?php if (($_GET['action'] ?? '') === 'admin/dashboard' || ($_GET['action'] ?? '') === 'admin'): ?><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script><?php endif; ?>
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
 </head>
 <body class="app-shell"<?= $user ? ' data-user-id="' . e($user['user_id']) . '" data-user-type="' . e($user['role']) . '"' : '' ?>>
@@ -31,7 +31,7 @@ if ($user) {
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
             <a href="<?= e(url('index.php')) ?>" class="topbar-brand">
-                <span class="logo-mark">SC</span>
+                <span class="logo-mark">CC</span>
                 <span class="brand-text"><?= e(APP_NAME) ?></span>
             </a>
         </div>
@@ -50,10 +50,10 @@ if ($user) {
                         <div class="role"><?= e($user['role']) ?></div>
                     </div>
                 </div>
-                <a href="<?= e(url('index.php?action=logout')) ?>" class="btn btn-ghost btn-sm">
+                <form method="post" action="<?= e(url('index.php?action=logout')) ?>" class="inline-flex"><?= csrf_field() ?><button type="submit" class="btn btn-ghost btn-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     <span class="logout-text">Logout</span>
-                </a>
+                </button></form>
             <?php else: ?>
                 <a href="<?= e(url('index.php?action=login')) ?>" class="btn btn-primary btn-sm">Login</a>
             <?php endif; ?>

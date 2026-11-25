@@ -5452,3 +5452,30 @@ Stack trace:
 #2 C:\xampp\htdocs\SMEIC\public\index.php(319): CanteenController->dailySpecial()
 #3 {main}
   thrown in C:\xampp\htdocs\SMEIC\views\canteen\daily-special.php on line 48
+[15-Nov-2026 23:29:38 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to float in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 27
+[15-Nov-2026 23:29:38 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to int in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 32
+[15-Nov-2026 23:33:13 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to float in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 27
+[15-Nov-2026 23:33:13 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to int in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 32
+[15-Nov-2026 23:34:24 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to float in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 27
+[15-Nov-2026 23:34:24 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to int in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 32
+[15-Nov-2026 23:35:27 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to float in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 27
+[15-Nov-2026 23:35:27 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to int in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 32
+[15-Nov-2026 23:36:49 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to float in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 27
+[15-Nov-2026 23:36:49 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to int in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 32
+[15-Nov-2026 23:55:57 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to float in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 27
+[15-Nov-2026 23:55:57 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to int in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 32
+[16-Nov-2026 00:03:19 Asia/Kolkata] PHP Fatal error:  Uncaught TypeError: Cannot access offset of type string on string in C:\xampp\htdocs\SMEIC\views\canteen\daily-special.php:48
+Stack trace:
+#0 C:\xampp\htdocs\SMEIC\config\functions.php(211): require()
+#1 C:\xampp\htdocs\SMEIC\controllers\CanteenController.php(482): render_with_layout('canteen/daily-s...', Array)
+#2 C:\xampp\htdocs\SMEIC\public\index.php(319): CanteenController->dailySpecial()
+#3 {main}
+  thrown in C:\xampp\htdocs\SMEIC\views\canteen\daily-special.php on line 48
+[16-Nov-2026 00:04:29 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to float in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 27
+[16-Nov-2026 00:04:29 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to int in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 32
+[16-Nov-2026 01:02:34 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to float in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 27
+[16-Nov-2026 01:02:34 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to int in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 32
+[16-Nov-2026 09:26:04 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to float in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 27
+[16-Nov-2026 09:26:04 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to int in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 32
+[16-Nov-2026 09:27:20 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to float in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 27
+[16-Nov-2026 09:27:20 Asia/Kolkata] PHP Warning:  Object of class PDOStatement could not be converted to int in C:\xampp\htdocs\SMEIC\controllers\StudentController.php on line 32

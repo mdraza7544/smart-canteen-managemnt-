@@ -2,10 +2,10 @@
 // Application-wide constants. Loaded once by front controller.
 
 // Application name
-define('APP_NAME', 'SMEIC - School Canteen');
+define('APP_NAME', 'Smart College Canteen');
 
 // Base URL — adjust if running under a sub-path other than /SMEIC/public
-define('BASE_URL', 'http://localhost/SMEIC/public');
+define('BASE_URL', 'http://localhost/canteenmanagment/public');
 
 // File system path to the public directory
 define('PUBLIC_PATH', dirname(__DIR__) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR);
@@ -43,3 +43,4 @@ define('TOKEN_VERIFY_LOCKOUT_SECONDS', 900); // 15 minutes
 
 // Timezone
 date_default_timezone_set('Asia/Kolkata');
+

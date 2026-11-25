@@ -1,4 +1,4 @@
-// SMEIC shared JS — sidebar toggle, toasts, AJAX helper, password eye toggle, cart, utilities.
+// Smart College Canteen shared JS — sidebar toggle, toasts, AJAX helper, password eye toggle and cart utilities.
 (function () {
     'use strict';
 
